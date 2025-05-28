@@ -4,9 +4,9 @@ const isIndex = location.pathname.includes("index.html") || location.pathname ==
 const isAdmin = location.pathname.includes("admin.html");
 
 const users = {
-  'emerson': { password: '123456', fullName: 'Emerson Caldeira', isAdmin: false },
-  'flavio': { password: '123456', fullName: 'Flávio Furtado', isAdmin: false },
-  'elias': { password: '123456', fullName: 'Elias Almo', isAdmin: false },
+  'Emerson': { password: '123456', fullName: 'Emerson Caldeira', isAdmin: false },
+  'Flavio': { password: '123456', fullName: 'Flávio Furtado', isAdmin: false },
+  'Elias': { password: '123456', fullName: 'Elias Almo', isAdmin: false },
   'admin': { password: 'adm@papel12', fullName: 'Administrador', isAdmin: true }
 };
 
@@ -95,11 +95,20 @@ if (isIndex) {
   };
 
   function startCamera(locationValid) {
-    cameraSection.classList.remove('oculto');
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
+  cameraSection.classList.remove('oculto');
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      video.srcObject = stream;
+
+      video.onloadedmetadata = () => {
+        video.play();
+
         captureBtn.onclick = () => {
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            alert("A câmera não carregou corretamente. Tente novamente.");
+            return;
+          }
+
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           canvas.getContext('2d').drawImage(video, 0, 0);
@@ -128,8 +137,10 @@ if (isIndex) {
 
           video.srcObject.getTracks().forEach(track => track.stop());
         };
-      });
-  }
+      };
+    })
+    .catch(() => alert('Não foi possível acessar a câmera. Permita o uso no navegador.'));
+}
 
   cancelCamera.onclick = () => {
     cameraSection.classList.add('oculto');
