@@ -1,21 +1,62 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-control" content="no-cache">
-    <title>Admin - Controle de Ponto</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | Ponto Papelprint</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="script.js"></script>
 </head>
 <body>
-    <!-- Admin Page -->
-    <div id="admin-page" class="min-h-screen flex flex-col">
-        <!-- Conteúdo do admin aqui -->
-    </div>
+  <div id="admin-page" class="pagina">
+    <header class="topo">
+      <svg class="logo" viewBox="0 0 200 60">
+        <rect width="200" height="60" fill="#00AEEF" rx="5" ry="5"/>
+        <text x="100" y="38" font-family="Poppins, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">PAPELPRINT</text>
+      </svg>
+      <div>
+        <span>Administrador</span>
+        <button id="admin-logout-btn">Sair</button>
+      </div>
+    </header>
 
-    <!-- Modais adicionais (foto, localização, câmera) -->
-    <!-- ... -->
+    <main>
+      <h1>Registros de Ponto</h1>
+      <section class="filtros">
+        <label for="employee-filter">Funcionário</label>
+        <select id="employee-filter">
+          <option value="">Todos</option>
+          <option value="Emerson">Emerson</option>
+          <option value="Flavio">Flavio</option>
+          <option value="Elias">Elias</option>
+        </select>
 
-    <script src="script.js" defer></script>
+        <label for="start-date">Data Inicial</label>
+        <input type="date" id="start-date">
+
+        <label for="end-date">Data Final</label>
+        <input type="date" id="end-date">
+
+        <button id="apply-filters">Aplicar</button>
+        <button id="export-csv">Exportar CSV</button>
+      </section>
+
+      <section>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>Foto</th>
+              <th>Localização</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="punch-records"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
 </body>
 </html>
