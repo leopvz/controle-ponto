@@ -163,6 +163,7 @@ if (isAdmin) {
   const punchRecordsTable = document.getElementById('punch-records');
 
   function renderTable(data) {
+  data = data.map(r => ({ ...r, date: new Date(r.date) }));
     punchRecordsTable.innerHTML = '';
     data.sort((a, b) => new Date(b.date) - new Date(a.date));
     for (let r of data) {
