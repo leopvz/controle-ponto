@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Administrador - Papelprint</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-4">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Painel do Administrador</h1>
+
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold text-gray-700">Registros de Ponto</h2>
+      <button onclick="exportarCSV()" class="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600">
+        <i class="fa-solid fa-file-csv mr-2"></i>Exportar CSV
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white rounded-xl shadow-md overflow-hidden">
+        <thead>
+          <tr class="bg-gray-200 text-left">
+            <th class="py-3 px-4">Funcionário</th>
+            <th class="py-3 px-4">Tipo</th>
+            <th class="py-3 px-4">Horário</th>
+            <th class="py-3 px-4">Localização</th>
+            <th class="py-3 px-4">Selfie</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaRegistros">
+          <!-- Registros serão inseridos dinamicamente -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+    const tabela = document.getElementById('tabelaRegistros');
+
+    registros.forEach(reg => {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b';
+
+      tr.innerHTML = `
+        <td class="py-2 px-4">${reg.funcionario}</td>
+        <td class="py-2 px-4">${reg.tipo}</td>
+        <td class="py-2 px-4">${new Date(reg.horario).toLocaleString('pt-BR')}</td>
+        <td class="py-2 px-4">Lat: ${reg.lat.toFixed(5)}, Lng: ${reg.lng.toFixed(5)}</td>
+        <td class="py-2 px-4">
+          <img src="${reg.imagem}" class="w-16 h-16 rounded-lg object-cover border" alt="Selfie">
+        </td>
+      `;
+      tabela.appendChild(tr);
+    });
+
+    function exportarCSV() {
+      let csv = 'Funcionário,Tipo,Horário,Latitude,Longitude\n';
+      registros.forEach(r => {
+        csv += `${r.funcionario},${r.tipo},${new Date(r.horario).toLocaleString('pt-BR')},${r.lat},${r.lng}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'registros_ponto.csv';
+      link.click();
+    }
+  </script>
+</body>
+</html>
