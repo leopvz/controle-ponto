@@ -18,7 +18,7 @@
     <h1 class="text-2xl font-semibold text-gray-800 text-center mb-4">Registro de Ponto</h1>
 
     <div class="mb-4 text-center">
-      <p class="text-gray-600">Bem-vindo(a), Funcionário</p>
+      <p id="bemVindo" class="text-gray-600">Bem-vindo(a)</p>
       <p class="text-sm text-gray-500">Certifique-se de estar na sede e prepare-se para a selfie</p>
     </div>
 
@@ -39,12 +39,19 @@
     const canvas = document.getElementById('canvas');
     const captureBtn = document.getElementById('captureSelfie');
     const statusMessage = document.getElementById('statusMessage');
+    const bemVindo = document.getElementById('bemVindo');
+
+    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
+    if (!usuarioLogado) {
+      window.location.href = 'login.html';
+    } else {
+      bemVindo.textContent = `Bem-vindo(a), ${usuarioLogado.nome}`;
+    }
 
     const sedeLat = -23.477944;
     const sedeLng = -46.650889;
     const raioPermitido = 30; // metros
 
-    // Ativa câmera
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -54,22 +61,18 @@
       }
     }
 
-    // Calcula distância entre coordenadas
     function calcularDistancia(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // raio da Terra em metros
+      const R = 6371e3;
       const rad = Math.PI / 180;
       const dLat = (lat2 - lat1) * rad;
       const dLon = (lon2 - lon1) * rad;
-
       const a = Math.sin(dLat / 2) ** 2 +
                 Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
                 Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return R * c; // metros
+      return R * c;
     }
 
-    // Captura selfie + localização
     captureBtn.addEventListener('click', () => {
       if (!navigator.geolocation) {
         statusMessage.textContent = 'Geolocalização não suportada pelo navegador.';
@@ -86,35 +89,40 @@
           return;
         }
 
-        // Captura imagem da câmera
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const imagemData = canvas.toDataURL('image/png');
 
-        // Define tipo de ponto
         const agora = new Date();
         const hora = agora.getHours();
         const minuto = agora.getMinutes();
         const totalMin = hora * 60 + minuto;
         let tipo = 'Ponto Extra';
 
-        if (totalMin >= 420 && totalMin <= 540) tipo = 'Entrada'; // 07:00 - 09:00
-        else if (totalMin >= 720 && totalMin <= 780) tipo = 'Saída para Almoço'; // 12:00 - 13:00
-        else if (totalMin >= 781 && totalMin <= 900) tipo = 'Retorno do Almoço'; // 13:01 - 15:00
-        else if (totalMin >= 1020 && totalMin <= 1080) tipo = 'Saída'; // 17:00 - 18:00
+        if (totalMin >= 420 && totalMin <= 540) tipo = 'Entrada';
+        else if (totalMin >= 720 && totalMin <= 780) tipo = 'Saída para Almoço';
+        else if (totalMin >= 781 && totalMin <= 900) tipo = 'Retorno do Almoço';
+        else if (totalMin >= 1020 && totalMin <= 1080) tipo = 'Saída';
 
         statusMessage.innerHTML = `<span class="text-green-600 font-medium">${tipo}</span> registrado com sucesso às ${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}.`;
 
-        // Aqui podemos salvar no localStorage ou banco depois
-        // Ex: localStorage.setItem("ponto", JSON.stringify({ tipo, imagemData, horario: agora.toISOString() }))
+        const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
+        registros.push({
+          funcionario: usuarioLogado.nome,
+          tipo,
+          horario: agora.toISOString(),
+          lat: userLat,
+          lng: userLng,
+          imagem: imagemData
+        });
+        localStorage.setItem('registrosPonto', JSON.stringify(registros));
       }, err => {
         statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
       });
     });
 
-    // Inicia câmera ao carregar
     startCamera();
   </script>
 </body>
