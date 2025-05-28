@@ -14,6 +14,12 @@
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="absolute top-4 right-4">
+    <button onclick="logout()" class="text-sm text-gray-600 hover:text-red-600">
+      <i class="fas fa-sign-out-alt mr-1"></i>Sair
+    </button>
+  </div>
+
   <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
     <h1 class="text-2xl font-semibold text-gray-800 text-center mb-4">Registro de Ponto</h1>
 
@@ -122,6 +128,11 @@
         statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
       });
     });
+
+    function logout() {
+      localStorage.removeItem('usuarioLogado');
+      window.location.href = 'login.html';
+    }
 
     startCamera();
   </script>
