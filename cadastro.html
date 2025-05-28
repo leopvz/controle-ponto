@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de Funcionários - Papelprint</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-lg bg-white p-6 rounded-2xl shadow-xl">
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Cadastro de Funcionários</h1>
+
+    <form id="formCadastro" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Nome Completo</label>
+        <input type="text" id="nome" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Usuário</label>
+        <input type="text" id="usuario" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Senha</label>
+        <input type="password" id="senha" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Setor</label>
+        <input type="text" id="setor" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" />
+      </div>
+
+      <button type="submit" class="w-full bg-cyan-500 text-white py-2 rounded-lg font-semibold hover:bg-cyan-600">
+        Cadastrar Funcionário
+      </button>
+
+      <p id="mensagemSucesso" class="hidden text-green-600 text-center mt-4">Funcionário cadastrado com sucesso!</p>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('formCadastro');
+    const mensagem = document.getElementById('mensagemSucesso');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const nome = document.getElementById('nome').value.trim();
+      const usuario = document.getElementById('usuario').value.trim();
+      const senha = document.getElementById('senha').value.trim();
+      const setor = document.getElementById('setor').value.trim();
+
+      const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+      const existe = funcionarios.find(f => f.usuario === usuario);
+
+      if (existe) {
+        alert('Já existe um funcionário com esse usuário.');
+        return;
+      }
+
+      funcionarios.push({ nome, usuario, senha, setor });
+      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+
+      mensagem.classList.remove('hidden');
+      form.reset();
+    });
+  </script>
+</body>
+</html>
