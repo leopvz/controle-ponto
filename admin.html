@@ -14,11 +14,32 @@
   </style>
 </head>
 <body class="bg-gray-100 p-4">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Painel do Administrador</h1>
 
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-700">Registros de Ponto</h2>
+    <div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Funcionário</label>
+        <input type="text" id="filtroNome" class="w-48 p-2 border border-gray-300 rounded-lg" placeholder="Buscar por nome..." />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Tipo de Ponto</label>
+        <select id="filtroTipo" class="w-48 p-2 border border-gray-300 rounded-lg">
+          <option value="">Todos</option>
+          <option value="Entrada">Entrada</option>
+          <option value="Saída para Almoço">Saída para Almoço</option>
+          <option value="Retorno do Almoço">Retorno do Almoço</option>
+          <option value="Saída">Saída</option>
+          <option value="Ponto Extra">Ponto Extra</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Data</label>
+        <input type="date" id="filtroData" class="w-48 p-2 border border-gray-300 rounded-lg" />
+      </div>
+
       <button onclick="exportarCSV()" class="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600">
         <i class="fa-solid fa-file-csv mr-2"></i>Exportar CSV
       </button>
@@ -36,7 +57,7 @@
           </tr>
         </thead>
         <tbody id="tabelaRegistros">
-          <!-- Registros serão inseridos dinamicamente -->
+          <!-- Registros inseridos dinamicamente -->
         </tbody>
       </table>
     </div>
@@ -45,34 +66,67 @@
   <script>
     const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
     const tabela = document.getElementById('tabelaRegistros');
+    const filtroNome = document.getElementById('filtroNome');
+    const filtroTipo = document.getElementById('filtroTipo');
+    const filtroData = document.getElementById('filtroData');
 
-    registros.forEach(reg => {
-      const tr = document.createElement('tr');
-      tr.className = 'border-b';
+    function renderizarTabela() {
+      tabela.innerHTML = '';
+      const nome = filtroNome.value.toLowerCase();
+      const tipo = filtroTipo.value;
+      const data = filtroData.value;
 
-      tr.innerHTML = `
-        <td class="py-2 px-4">${reg.funcionario}</td>
-        <td class="py-2 px-4">${reg.tipo}</td>
-        <td class="py-2 px-4">${new Date(reg.horario).toLocaleString('pt-BR')}</td>
-        <td class="py-2 px-4">Lat: ${reg.lat.toFixed(5)}, Lng: ${reg.lng.toFixed(5)}</td>
-        <td class="py-2 px-4">
-          <img src="${reg.imagem}" class="w-16 h-16 rounded-lg object-cover border" alt="Selfie">
-        </td>
-      `;
-      tabela.appendChild(tr);
-    });
+      const filtrados = registros.filter(reg => {
+        const nomeOk = reg.funcionario.toLowerCase().includes(nome);
+        const tipoOk = tipo === '' || reg.tipo === tipo;
+        const dataOk = !data || new Date(reg.horario).toISOString().slice(0, 10) === data;
+        return nomeOk && tipoOk && dataOk;
+      });
+
+      filtrados.forEach(reg => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b';
+        tr.innerHTML = `
+          <td class="py-2 px-4">${reg.funcionario}</td>
+          <td class="py-2 px-4">${reg.tipo}</td>
+          <td class="py-2 px-4">${new Date(reg.horario).toLocaleString('pt-BR')}</td>
+          <td class="py-2 px-4">Lat: ${reg.lat.toFixed(5)}, Lng: ${reg.lng.toFixed(5)}</td>
+          <td class="py-2 px-4">
+            <img src="${reg.imagem}" class="w-16 h-16 rounded-lg object-cover border" alt="Selfie">
+          </td>
+        `;
+        tabela.appendChild(tr);
+      });
+    }
 
     function exportarCSV() {
       let csv = 'Funcionário,Tipo,Horário,Latitude,Longitude\n';
-      registros.forEach(r => {
+      const nome = filtroNome.value.toLowerCase();
+      const tipo = filtroTipo.value;
+      const data = filtroData.value;
+
+      const filtrados = registros.filter(reg => {
+        const nomeOk = reg.funcionario.toLowerCase().includes(nome);
+        const tipoOk = tipo === '' || reg.tipo === tipo;
+        const dataOk = !data || new Date(reg.horario).toISOString().slice(0, 10) === data;
+        return nomeOk && tipoOk && dataOk;
+      });
+
+      filtrados.forEach(r => {
         csv += `${r.funcionario},${r.tipo},${new Date(r.horario).toLocaleString('pt-BR')},${r.lat},${r.lng}\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = 'registros_ponto.csv';
+      link.download = 'registros_filtrados.csv';
       link.click();
     }
+
+    filtroNome.addEventListener('input', renderizarTabela);
+    filtroTipo.addEventListener('change', renderizarTabela);
+    filtroData.addEventListener('change', renderizarTabela);
+
+    renderizarTabela();
   </script>
 </body>
 </html>
