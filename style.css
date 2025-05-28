@@ -1,0 +1,60 @@
+/* style.css */
+/* Incluir aqui os estilos comuns para login, páginas, botões, modais, tabela admin */
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f7fafc;
+  margin: 0;
+  padding: 0;
+}
+
+.btn-primary {
+  background-color: #00AEEF;
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #008FCB;
+}
+
+.btn-secondary {
+  background-color: #E2E8F0;
+  color: #2D3748;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.thumbnail {
+  width: 50px;
+  height: 50px;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 500px;
+  width: 90%;
+}
