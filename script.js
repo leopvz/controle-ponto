@@ -154,6 +154,11 @@ if (isIndex) {
 
 // ADMIN
 if (isAdmin) {
+  // Carregar registros salvos do localStorage ao abrir admin
+  punchRecords = JSON.parse(localStorage.getItem('punchRecords') || '[]').map(r => ({
+    ...r,
+    date: new Date(r.date)
+  }));
   const adminLogoutBtn = document.getElementById('admin-logout-btn');
   const employeeFilter = document.getElementById('employee-filter');
   const startDate = document.getElementById('start-date');
