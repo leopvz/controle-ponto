@@ -1,60 +1,121 @@
-/* style.css */
-/* Incluir aqui os estilos comuns para login, páginas, botões, modais, tabela admin */
-
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: #f7fafc;
+  background-color: #f8fafc;
   margin: 0;
   padding: 0;
 }
 
-.btn-primary {
+.pagina {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.oculto {
+  display: none !important;
+}
+
+.topo {
+  background-color: white;
+  width: 100%;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-login {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.card-login input,
+.card-login button {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+}
+
+.card-login button {
   background-color: #00AEEF;
   color: white;
+  font-weight: bold;
   border: none;
-  border-radius: 9999px;
-  padding: 0.75rem 1.5rem;
   cursor: pointer;
-  transition: background-color 0.3s ease;
 }
 
-.btn-primary:hover {
-  background-color: #008FCB;
+.card-login button:hover {
+  background-color: #008EC9;
 }
 
-.btn-secondary {
-  background-color: #E2E8F0;
-  color: #2D3748;
-  border: none;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
+.erro {
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+video {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+canvas {
+  display: none;
+}
+
+section {
+  margin-top: 1.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+table th,
+table td {
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+table th {
+  background-color: #e2e8f0;
+  font-weight: 600;
 }
 
 .thumbnail {
-  width: 50px;
-  height: 50px;
-  border-radius: 9999px;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
   object-fit: cover;
 }
 
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 1rem;
-  max-width: 500px;
-  width: 90%;
+button {
+  cursor: pointer;
 }
