@@ -4,9 +4,9 @@ const isIndex = location.pathname.includes("index.html") || location.pathname ==
 const isAdmin = location.pathname.includes("admin.html");
 
 const users = {
-  'Emerson': { password: '123456', fullName: 'Emerson Caldeira', isAdmin: false },
-  'Flavio': { password: '123456', fullName: 'Flávio Furtado', isAdmin: false },
-  'Elias': { password: '123456', fullName: 'Elias Almo', isAdmin: false },
+  'emerson': { password: '123456', fullName: 'Emerson Caldeira', isAdmin: false },
+  'flavio': { password: '123456', fullName: 'Flávio Furtado', isAdmin: false },
+  'elias': { password: '123456', fullName: 'Elias Almo', isAdmin: false },
   'admin': { password: 'adm@papel12', fullName: 'Administrador', isAdmin: true }
 };
 
