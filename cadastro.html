@@ -11,6 +11,24 @@
       font-family: 'Poppins', sans-serif;
     }
   </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
+      authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
+      projectId: "controle-de-ponto-papelprint",
+      storageBucket: "controle-de-ponto-papelprint.appspot.com",
+      messagingSenderId: "630875968731",
+      appId: "1:630875968731:web:2dc067757a090bc16c28fe"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-lg bg-white p-6 rounded-2xl shadow-xl">
@@ -23,8 +41,8 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700">Usuário</label>
-        <input type="text" id="usuario" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required />
+        <label class="block text-sm font-medium text-gray-700">E-mail</label>
+        <input type="email" id="usuario" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" required />
       </div>
 
       <div>
@@ -49,52 +67,32 @@
     const form = document.getElementById('formCadastro');
     const mensagem = document.getElementById('mensagemSucesso');
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const nome = document.getElementById('nome').value.trim();
-      const usuario = document.getElementById('usuario').value.trim();
+      const email = document.getElementById('usuario').value.trim();
       const senha = document.getElementById('senha').value.trim();
       const setor = document.getElementById('setor').value.trim();
 
-      const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
-      const existe = funcionarios.find(f => f.usuario === usuario);
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, senha);
+        const uid = userCredential.user.uid;
 
-      if (existe) {
-        alert('Já existe um funcionário com esse usuário.');
-        return;
+        await db.collection('funcionarios').doc(uid).set({
+          nome,
+          email,
+          setor,
+          uid
+        });
+
+        mensagem.classList.remove('hidden');
+        form.reset();
+      } catch (error) {
+        alert('Erro ao cadastrar funcionário: ' + error.message);
+        console.error(error);
       }
-
-      funcionarios.push({ nome, usuario, senha, setor });
-      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
-
-      mensagem.classList.remove('hidden');
-      form.reset();
     });
   </script>
-  <!-- Firebase App -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-
-<!-- Firebase Auth -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-
-<!-- Firebase Firestore -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
-    authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
-    projectId: "controle-de-ponto-papelprint",
-    storageBucket: "controle-de-ponto-papelprint.appspot.com",
-    messagingSenderId: "630875968731",
-    appId: "1:630875968731:web:2dc067757a090bc16c28fe"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
-</script>
-
 </body>
 </html>
