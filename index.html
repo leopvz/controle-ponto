@@ -38,6 +38,26 @@
     </button>
 
     <p id="statusMessage" class="mt-4 text-center text-sm text-gray-600"></p>
+
+    <hr class="my-6">
+
+    <div>
+      <h2 class="text-lg font-semibold text-gray-800 mb-2">Justificativa de Falta</h2>
+      <form id="formJustificativa" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Motivo</label>
+          <textarea id="motivo" rows="3" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Descreva o motivo da falta..." required></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Anexar Atestado (opcional)</label>
+          <input type="file" id="anexo" accept="image/*,application/pdf" class="w-full p-2 border border-gray-300 rounded-lg" />
+        </div>
+        <button type="submit" class="w-full bg-cyan-500 text-white py-2 rounded-lg font-semibold hover:bg-cyan-600">
+          Enviar Justificativa
+        </button>
+        <p id="msgSucesso" class="hidden text-green-600 text-center">Justificativa enviada com sucesso!</p>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -56,7 +76,7 @@
 
     const sedeLat = -23.477944;
     const sedeLng = -46.650889;
-    const raioPermitido = 30; // metros
+    const raioPermitido = 30;
 
     async function startCamera() {
       try {
@@ -72,16 +92,14 @@
       const rad = Math.PI / 180;
       const dLat = (lat2 - lat1) * rad;
       const dLon = (lon2 - lon1) * rad;
-      const a = Math.sin(dLat / 2) ** 2 +
-                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-                Math.sin(dLon / 2) ** 2;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
 
     captureBtn.addEventListener('click', () => {
       if (!navigator.geolocation) {
-        statusMessage.textContent = 'Geolocalização não suportada pelo navegador.';
+        statusMessage.textContent = 'Geolocalização não suportada.';
         return;
       }
 
@@ -91,7 +109,7 @@
         const distancia = calcularDistancia(userLat, userLng, sedeLat, sedeLng);
 
         if (distancia > raioPermitido) {
-          statusMessage.textContent = `Fora da área permitida (${Math.round(distancia)}m). Ponto não registrado.`;
+          statusMessage.textContent = `Fora da área (${Math.round(distancia)}m).`;
           return;
         }
 
@@ -128,6 +146,35 @@
         statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
       });
     });
+
+    document.getElementById('formJustificativa').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const motivo = document.getElementById('motivo').value.trim();
+      const anexo = document.getElementById('anexo').files[0];
+      const leitor = new FileReader();
+
+      if (anexo) {
+        leitor.onload = function () {
+          salvarJustificativa(motivo, leitor.result);
+        };
+        leitor.readAsDataURL(anexo);
+      } else {
+        salvarJustificativa(motivo, null);
+      }
+    });
+
+    function salvarJustificativa(motivo, anexoBase64) {
+      const justificativas = JSON.parse(localStorage.getItem('justificativasPonto')) || [];
+      justificativas.push({
+        funcionario: usuarioLogado.nome,
+        motivo,
+        anexo: anexoBase64,
+        dataEnvio: new Date().toISOString()
+      });
+      localStorage.setItem('justificativasPonto', JSON.stringify(justificativas));
+      document.getElementById('msgSucesso').classList.remove('hidden');
+      document.getElementById('formJustificativa').reset();
+    }
 
     function logout() {
       localStorage.removeItem('usuarioLogado');
