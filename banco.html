@@ -1,102 +1,99 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Banco de Horas - Painel Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banco de Horas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
     }
+    .container {
+      max-width: 960px;
+      margin: auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+    h1 {
+      font-size: 24px;
+      color: #1e293b;
+      margin-bottom: 20px;
+    }
+    select, input[type="date"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ccc;
+    }
+    th {
+      background-color: #00AEEF;
+      color: white;
+    }
+    .saldo-positivo { color: green; }
+    .saldo-negativo { color: red; }
   </style>
 </head>
-<body class="bg-gray-100 p-6">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Banco de Horas - Funcionários</h1>
+<body>
+  <div class="container">
+    <h1>Banco de Horas</h1>
+    <div>
+      <label for="funcionario">Funcionário:</label>
+      <select id="funcionario"></select>
 
-    <table class="min-w-full bg-white rounded-xl shadow-md overflow-hidden">
+      <label for="dataInicio">De:</label>
+      <input type="date" id="dataInicio">
+
+      <label for="dataFim">Até:</label>
+      <input type="date" id="dataFim">
+
+      <button onclick="filtrarBanco()">Filtrar</button>
+    </div>
+    <table>
       <thead>
-        <tr class="bg-gray-200 text-left">
-          <th class="py-3 px-4">Funcionário</th>
-          <th class="py-3 px-4">Saldo (min)</th>
+        <tr>
+          <th>Data</th>
+          <th>Entrada</th>
+          <th>Saída Almoço</th>
+          <th>Retorno</th>
+          <th>Saída</th>
+          <th>Saldo</th>
         </tr>
       </thead>
-      <tbody id="tabelaBanco">
-        <!-- Linhas inseridas dinamicamente -->
-      </tbody>
+      <tbody id="tabelaBanco"></tbody>
     </table>
+    <p id="saldoTotal"></p>
   </div>
 
   <script>
-    const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
-    const toleranciaMin = 10;
+    // Firebase config a ser preenchido com seu SDK Web...
+    const firebaseConfig = { /* ... */ };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const horariosIdeais = {
-      "Entrada": 8 * 60,              // 08:00
-      "Saída para Almoço": 12 * 60,   // 12:00
-      "Retorno do Almoço": 13 * 60,  // 13:00
-      "Saída": 17 * 60                // 17:00
-    };
-
-    const saldos = {};
-
-    registros.forEach(reg => {
-      const nome = reg.funcionario;
-      const tipo = reg.tipo;
-      const horario = new Date(reg.horario);
-      const minutosBatida = horario.getHours() * 60 + horario.getMinutes();
-      const data = horario.toISOString().slice(0, 10);
-
-      if (!saldos[nome]) saldos[nome] = {};
-      if (!saldos[nome][data]) saldos[nome][data] = 0;
-
-      if (horariosIdeais[tipo] !== undefined) {
-        const ideal = horariosIdeais[tipo];
-        const diferenca = minutosBatida - ideal;
-
-        if (Math.abs(diferenca) > toleranciaMin) {
-          saldos[nome][data] += -diferenca; // negativo atrasa, positivo adianta
-        }
-      }
-    });
-
-    const tabela = document.getElementById('tabelaBanco');
-    Object.keys(saldos).forEach(nome => {
-      const total = Object.values(saldos[nome]).reduce((a, b) => a + b, 0);
-      const tr = document.createElement('tr');
-      tr.className = 'border-b';
-      tr.innerHTML = `
-        <td class="py-2 px-4 font-medium text-gray-800">${nome}</td>
-        <td class="py-2 px-4 ${total >= 0 ? 'text-green-600' : 'text-red-600'}">${total} min</td>
-      `;
-      tabela.appendChild(tr);
-    });
+    async function filtrarBanco() {
+      // Função a ser implementada no próximo passo...
+      alert("Função de filtragem em desenvolvimento");
+    }
   </script>
-  <!-- Firebase App -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-
-<!-- Firebase Auth -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-
-<!-- Firebase Firestore -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
-    authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
-    projectId: "controle-de-ponto-papelprint",
-    storageBucket: "controle-de-ponto-papelprint.appspot.com",
-    messagingSenderId: "630875968731",
-    appId: "1:630875968731:web:2dc067757a090bc16c28fe"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
-</script>
-
 </body>
 </html>
