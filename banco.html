@@ -1,85 +1,96 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Banco de Horas</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      background-color: #f1f5f9;
+      background-color: #f9fafb;
       margin: 0;
-      padding: 20px;
+      padding: 1rem;
     }
+
     .container {
-      max-width: 960px;
+      max-width: 1000px;
       margin: auto;
-      background-color: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+      background-color: #ffffff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
     }
+
     h1 {
-      font-size: 24px;
-      color: #1e293b;
-      margin-bottom: 20px;
+      text-align: center;
+      color: #00AEEF;
     }
-    select, input[type="date"] {
-      padding: 10px;
+
+    label {
+      font-weight: 600;
+    }
+
+    input, select, button {
+      display: block;
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
       border: 1px solid #ccc;
       border-radius: 6px;
-      margin-right: 10px;
-      font-size: 14px;
+      font-size: 1rem;
     }
+
     button {
-      padding: 10px 15px;
       background-color: #00AEEF;
       color: white;
-      border: none;
-      border-radius: 6px;
+      font-weight: 600;
       cursor: pointer;
     }
-    button:hover {
-      opacity: 0.9;
-    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 1rem;
     }
+
     th, td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #ccc;
+      border: 1px solid #e0e0e0;
+      padding: 0.75rem;
+      text-align: center;
     }
+
     th {
-      background-color: #00AEEF;
-      color: white;
+      background-color: #f1f5f9;
     }
-    .saldo-positivo { color: green; }
-    .saldo-negativo { color: red; }
+
+    .saldo-total {
+      font-weight: bold;
+      margin-top: 1rem;
+      text-align: right;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Banco de Horas</h1>
-    <div>
-      <label for="funcionario">Funcionário:</label>
-      <select id="funcionario"></select>
+    <label for="funcionario">Funcionário:</label>
+    <select id="funcionario"></select>
 
-      <label for="dataInicio">De:</label>
-      <input type="date" id="dataInicio">
+    <label for="dataInicio">Data Início:</label>
+    <input type="date" id="dataInicio">
 
-      <label for="dataFim">Até:</label>
-      <input type="date" id="dataFim">
+    <label for="dataFim">Data Fim:</label>
+    <input type="date" id="dataFim">
 
-      <button onclick="filtrarBanco()">Filtrar</button>
-      <button onclick="exportarCSV()">Exportar CSV</button>
-    </div>
+    <button onclick="filtrarBanco()">Filtrar</button>
+    <button onclick="exportarCSV()">Exportar CSV</button>
+
     <table>
       <thead>
         <tr>
@@ -93,37 +104,100 @@
       </thead>
       <tbody id="tabelaBanco"></tbody>
     </table>
-    <p id="saldoTotal"></p>
+
+    <div class="saldo-total" id="saldoTotal"></div>
   </div>
 
   <script>
-    const firebaseConfig = { /* Seu Firebase Config */ };
+    // Cole aqui sua configuração do Firebase
+    const firebaseConfig = { /* sua config */ };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function exportarCSV() {
-      const linhas = document.querySelectorAll("#tabelaBanco tr");
-      let csv = "Data,Entrada,Saída Almoço,Retorno,Saída,Saldo\n";
+    async function filtrarBanco() {
+      const funcionario = document.getElementById("funcionario").value;
+      const dataInicio = new Date(document.getElementById("dataInicio").value);
+      const dataFim = new Date(document.getElementById("dataFim").value);
+      dataFim.setHours(23, 59, 59, 999);
 
-      linhas.forEach(linha => {
-        const colunas = linha.querySelectorAll("td");
-        const dados = Array.from(colunas).map(col => col.innerText).join(",");
-        csv += dados + "\n";
+      const snapshot = await db.collection("pontos")
+        .where("nome", "==", funcionario)
+        .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(dataInicio))
+        .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(dataFim))
+        .get();
+
+      const registros = {};
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const dia = data.timestamp.toDate().toLocaleDateString();
+        if (!registros[dia]) registros[dia] = [];
+        registros[dia].push(data);
       });
 
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", "banco_de_horas.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const tabela = document.getElementById("tabelaBanco");
+      tabela.innerHTML = "";
+      let saldoTotalMin = 0;
+
+      for (let dia in registros) {
+        const pontos = registros[dia].sort((a, b) => a.timestamp.seconds - b.timestamp.seconds);
+        const entradas = pontos.map(p => p.timestamp.toDate());
+        const entrada = entradas[0];
+        const saidaAlmoco = entradas[1];
+        const retorno = entradas[2];
+        const saida = entradas[3];
+
+        let saldoMin = 0;
+        if (entrada && saida) {
+          const diff = (saida - entrada) / 60000;
+          const almoco = retorno && saidaAlmoco ? (retorno - saidaAlmoco) / 60000 : 60;
+          saldoMin = diff - almoco - 480; // 480 = 8h de jornada
+        }
+
+        saldoTotalMin += saldoMin;
+        const saldoTexto = (saldoMin >= 0 ? "+" : "") + Math.floor(saldoMin / 60) + "h" + Math.abs(saldoMin % 60) + "m";
+
+        tabela.innerHTML += `
+          <tr>
+            <td>${dia}</td>
+            <td>${entrada ? entrada.toLocaleTimeString() : "-"}</td>
+            <td>${saidaAlmoco ? saidaAlmoco.toLocaleTimeString() : "-"}</td>
+            <td>${retorno ? retorno.toLocaleTimeString() : "-"}</td>
+            <td>${saida ? saida.toLocaleTimeString() : "-"}</td>
+            <td>${saldoTexto}</td>
+          </tr>`;
+      }
+
+      const horas = Math.floor(saldoTotalMin / 60);
+      const minutos = Math.abs(saldoTotalMin % 60);
+      document.getElementById("saldoTotal").textContent = `Saldo total: ${saldoTotalMin >= 0 ? "+" : "-"}${Math.abs(horas)}h${minutos}m`;
     }
 
-    async function filtrarBanco() {
-      // Função já implementada no passo anterior
+    function exportarCSV() {
+      const linhas = document.querySelectorAll("table tr");
+      const csv = [...linhas].map(l => [...l.children].map(td => td.textContent).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "banco_de_horas.csv";
+      a.click();
+      URL.revokeObjectURL(url);
     }
+
+    async function carregarFuncionarios() {
+      const snapshot = await db.collection("funcionarios").get();
+      const select = document.getElementById("funcionario");
+      snapshot.forEach(doc => {
+        const opt = document.createElement("option");
+        opt.value = doc.data().nome;
+        opt.textContent = doc.data().nome;
+        select.appendChild(opt);
+      });
+    }
+
+    carregarFuncionarios();
   </script>
 </body>
+
 </html>
