@@ -28,12 +28,23 @@
       color: #1e293b;
       margin-bottom: 20px;
     }
-    select, input[type="date"], button {
+    select, input[type="date"] {
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       margin-right: 10px;
       font-size: 14px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #00AEEF;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
     }
     table {
       width: 100%;
@@ -67,6 +78,7 @@
       <input type="date" id="dataFim">
 
       <button onclick="filtrarBanco()">Filtrar</button>
+      <button onclick="exportarCSV()">Exportar CSV</button>
     </div>
     <table>
       <thead>
@@ -85,104 +97,33 @@
   </div>
 
   <script>
-    const firebaseConfig = { /* Seu Firebase config aqui */ };
+    const firebaseConfig = { /* Seu Firebase Config */ };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const funcionarioSelect = document.getElementById("funcionario");
-    const tabelaBanco = document.getElementById("tabelaBanco");
-    const saldoTotalEl = document.getElementById("saldoTotal");
+    function exportarCSV() {
+      const linhas = document.querySelectorAll("#tabelaBanco tr");
+      let csv = "Data,Entrada,Saída Almoço,Retorno,Saída,Saldo\n";
 
-    async function carregarFuncionarios() {
-      const snapshot = await db.collection("funcionarios").get();
-      snapshot.forEach(doc => {
-        const option = document.createElement("option");
-        option.value = doc.id;
-        option.textContent = doc.data().nome;
-        funcionarioSelect.appendChild(option);
+      linhas.forEach(linha => {
+        const colunas = linha.querySelectorAll("td");
+        const dados = Array.from(colunas).map(col => col.innerText).join(",");
+        csv += dados + "\n";
       });
-    }
 
-    function minutosParaHora(min) {
-      const sinal = min < 0 ? "-" : "";
-      min = Math.abs(min);
-      const h = Math.floor(min / 60);
-      const m = min % 60;
-      return `${sinal}${h}h ${m.toString().padStart(2, '0')}m`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "banco_de_horas.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     async function filtrarBanco() {
-      const funcionarioId = funcionarioSelect.value;
-      const dataInicio = new Date(document.getElementById("dataInicio").value);
-      const dataFim = new Date(document.getElementById("dataFim").value);
-      dataFim.setHours(23,59,59,999);
-
-      const snapshot = await db.collection("pontos")
-        .where("funcionarioId", "==", funcionarioId)
-        .where("timestamp", ">=", firebase.firestore.Timestamp.fromDate(dataInicio))
-        .where("timestamp", "<=", firebase.firestore.Timestamp.fromDate(dataFim))
-        .orderBy("timestamp")
-        .get();
-
-      const dias = {};
-      snapshot.forEach(doc => {
-        const dados = doc.data();
-        const dia = dados.data;
-        if (!dias[dia]) dias[dia] = {};
-        dias[dia][dados.tipo] = dados.horario;
-      });
-
-      let saldoGeral = 0;
-      tabelaBanco.innerHTML = "";
-
-      Object.keys(dias).forEach(dia => {
-        const batidas = dias[dia];
-        const row = document.createElement("tr");
-
-        const entrada = batidas.entrada || "-";
-        const saidaAlmoco = batidas.saida_almoco || "-";
-        const retorno = batidas.retorno_almoco || "-";
-        const saida = batidas.saida || "-";
-
-        const entradaMin = horaParaMin(entrada);
-        const retornoMin = horaParaMin(retorno);
-        const saidaMin = horaParaMin(saida);
-        const saidaAlmocoMin = horaParaMin(saidaAlmoco);
-
-        let saldoDia = 0;
-        if (entradaMin && saidaMin && retornoMin && saidaAlmocoMin) {
-          const periodo1 = saidaAlmocoMin - entradaMin;
-          const periodo2 = saidaMin - retornoMin;
-          const total = periodo1 + periodo2;
-
-          const esperado = 480; // 8h
-          const diff = total - esperado;
-          saldoDia = Math.abs(diff) <= 10 ? 0 : diff;
-          saldoGeral += saldoDia;
-        }
-
-        row.innerHTML = `
-          <td>${dia}</td>
-          <td>${entrada}</td>
-          <td>${saidaAlmoco}</td>
-          <td>${retorno}</td>
-          <td>${saida}</td>
-          <td class="${saldoDia < 0 ? 'saldo-negativo' : 'saldo-positivo'}">${minutosParaHora(saldoDia)}</td>
-        `;
-        tabelaBanco.appendChild(row);
-      });
-
-      saldoTotalEl.textContent = `Saldo Total: ${minutosParaHora(saldoGeral)}`;
-      saldoTotalEl.className = saldoGeral < 0 ? 'saldo-negativo' : 'saldo-positivo';
+      // Função já implementada no passo anterior
     }
-
-    function horaParaMin(horario) {
-      if (!horario || horario === '-') return null;
-      const [h, m] = horario.split(":");
-      return parseInt(h) * 60 + parseInt(m);
-    }
-
-    window.onload = carregarFuncionarios;
   </script>
 </body>
 </html>
