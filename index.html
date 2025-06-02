@@ -12,6 +12,23 @@
       font-family: 'Poppins', sans-serif;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
+      authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
+      projectId: "controle-de-ponto-papelprint",
+      storageBucket: "controle-de-ponto-papelprint.appspot.com",
+      messagingSenderId: "630875968731",
+      appId: "1:630875968731:web:2dc067757a090bc16c28fe"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
   <div class="absolute top-4 right-4">
@@ -38,26 +55,6 @@
     </button>
 
     <p id="statusMessage" class="mt-4 text-center text-sm text-gray-600"></p>
-
-    <hr class="my-6">
-
-    <div>
-      <h2 class="text-lg font-semibold text-gray-800 mb-2">Justificativa de Falta</h2>
-      <form id="formJustificativa" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Motivo</label>
-          <textarea id="motivo" rows="3" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Descreva o motivo da falta..." required></textarea>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Anexar Atestado (opcional)</label>
-          <input type="file" id="anexo" accept="image/*,application/pdf" class="w-full p-2 border border-gray-300 rounded-lg" />
-        </div>
-        <button type="submit" class="w-full bg-cyan-500 text-white py-2 rounded-lg font-semibold hover:bg-cyan-600">
-          Enviar Justificativa
-        </button>
-        <p id="msgSucesso" class="hidden text-green-600 text-center">Justificativa enviada com sucesso!</p>
-      </form>
-    </div>
   </div>
 
   <script>
@@ -67,25 +64,78 @@
     const statusMessage = document.getElementById('statusMessage');
     const bemVindo = document.getElementById('bemVindo');
 
-    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
-    if (!usuarioLogado) {
-      window.location.href = 'login.html';
-    } else {
-      bemVindo.textContent = `Bem-vindo(a), ${usuarioLogado.nome}`;
-    }
-
     const sedeLat = -23.477944;
     const sedeLng = -46.650889;
     const raioPermitido = 30;
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (err) {
-        statusMessage.textContent = 'Erro ao acessar a câmera: ' + err.message;
+    auth.onAuthStateChanged(async user => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
       }
-    }
+
+      const uid = user.uid;
+      const docRef = db.collection('funcionarios').doc(uid);
+      const doc = await docRef.get();
+
+      if (!doc.exists) {
+        alert('Usuário sem dados vinculados.');
+        auth.signOut();
+        return;
+      }
+
+      const dados = doc.data();
+      bemVindo.textContent = `Bem-vindo(a), ${dados.nome}`;
+
+      captureBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          statusMessage.textContent = 'Geolocalização não suportada.';
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(position => {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          const distancia = calcularDistancia(userLat, userLng, sedeLat, sedeLng);
+
+          if (distancia > raioPermitido) {
+            statusMessage.textContent = `Fora da área (${Math.round(distancia)}m).`;
+            return;
+          }
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imagemData = canvas.toDataURL('image/png');
+
+          const agora = new Date();
+          const hora = agora.getHours();
+          const minuto = agora.getMinutes();
+          const totalMin = hora * 60 + minuto;
+          let tipo = 'Ponto Extra';
+
+          if (totalMin >= 420 && totalMin <= 540) tipo = 'Entrada';
+          else if (totalMin >= 720 && totalMin <= 780) tipo = 'Saída para Almoço';
+          else if (totalMin >= 781 && totalMin <= 900) tipo = 'Retorno do Almoço';
+          else if (totalMin >= 1020 && totalMin <= 1080) tipo = 'Saída';
+
+          statusMessage.innerHTML = `<span class="text-green-600 font-medium">${tipo}</span> registrado com sucesso às ${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}.`;
+
+          db.collection('pontos').add({
+            uid,
+            nome: dados.nome,
+            tipo,
+            horario: agora.toISOString(),
+            lat: userLat,
+            lng: userLng,
+            imagem: imagemData
+          });
+        }, err => {
+          statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
+        });
+      });
+    });
 
     function calcularDistancia(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
@@ -97,115 +147,21 @@
       return R * c;
     }
 
-    captureBtn.addEventListener('click', () => {
-      if (!navigator.geolocation) {
-        statusMessage.textContent = 'Geolocalização não suportada.';
-        return;
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        statusMessage.textContent = 'Erro ao acessar a câmera: ' + err.message;
       }
-
-      navigator.geolocation.getCurrentPosition(position => {
-        const userLat = position.coords.latitude;
-        const userLng = position.coords.longitude;
-        const distancia = calcularDistancia(userLat, userLng, sedeLat, sedeLng);
-
-        if (distancia > raioPermitido) {
-          statusMessage.textContent = `Fora da área (${Math.round(distancia)}m).`;
-          return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imagemData = canvas.toDataURL('image/png');
-
-        const agora = new Date();
-        const hora = agora.getHours();
-        const minuto = agora.getMinutes();
-        const totalMin = hora * 60 + minuto;
-        let tipo = 'Ponto Extra';
-
-        if (totalMin >= 420 && totalMin <= 540) tipo = 'Entrada';
-        else if (totalMin >= 720 && totalMin <= 780) tipo = 'Saída para Almoço';
-        else if (totalMin >= 781 && totalMin <= 900) tipo = 'Retorno do Almoço';
-        else if (totalMin >= 1020 && totalMin <= 1080) tipo = 'Saída';
-
-        statusMessage.innerHTML = `<span class="text-green-600 font-medium">${tipo}</span> registrado com sucesso às ${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}.`;
-
-        const registros = JSON.parse(localStorage.getItem('registrosPonto')) || [];
-        registros.push({
-          funcionario: usuarioLogado.nome,
-          tipo,
-          horario: agora.toISOString(),
-          lat: userLat,
-          lng: userLng,
-          imagem: imagemData
-        });
-        localStorage.setItem('registrosPonto', JSON.stringify(registros));
-      }, err => {
-        statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
-      });
-    });
-
-    document.getElementById('formJustificativa').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const motivo = document.getElementById('motivo').value.trim();
-      const anexo = document.getElementById('anexo').files[0];
-      const leitor = new FileReader();
-
-      if (anexo) {
-        leitor.onload = function () {
-          salvarJustificativa(motivo, leitor.result);
-        };
-        leitor.readAsDataURL(anexo);
-      } else {
-        salvarJustificativa(motivo, null);
-      }
-    });
-
-    function salvarJustificativa(motivo, anexoBase64) {
-      const justificativas = JSON.parse(localStorage.getItem('justificativasPonto')) || [];
-      justificativas.push({
-        funcionario: usuarioLogado.nome,
-        motivo,
-        anexo: anexoBase64,
-        dataEnvio: new Date().toISOString()
-      });
-      localStorage.setItem('justificativasPonto', JSON.stringify(justificativas));
-      document.getElementById('msgSucesso').classList.remove('hidden');
-      document.getElementById('formJustificativa').reset();
     }
 
     function logout() {
-      localStorage.removeItem('usuarioLogado');
+      auth.signOut();
       window.location.href = 'login.html';
     }
 
     startCamera();
   </script>
-  <!-- Firebase App -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-
-<!-- Firebase Auth -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-
-<!-- Firebase Firestore -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
-    authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
-    projectId: "controle-de-ponto-papelprint",
-    storageBucket: "controle-de-ponto-papelprint.appspot.com",
-    messagingSenderId: "630875968731",
-    appId: "1:630875968731:web:2dc067757a090bc16c28fe"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
-</script>
-
 </body>
 </html>
