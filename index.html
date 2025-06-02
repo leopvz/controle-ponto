@@ -42,18 +42,23 @@
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     }
+
+    function classificarBatida(horaAtual) {
+      const hora = horaAtual.getHours();
+      const minutos = horaAtual.getMinutes();
+      const totalMinutos = hora * 60 + minutos;
+
+      if (totalMinutos >= 420 && totalMinutos <= 540) return "entrada"; // 7h às 9h
+      if (totalMinutos >= 720 && totalMinutos <= 780) return "saida_almoco"; // 12h às 13h
+      if (totalMinutos >= 780 && totalMinutos <= 900) return "retorno_almoco"; // 13h às 15h
+      if (totalMinutos >= 1020 && totalMinutos <= 1080) return "saida"; // 17h às 18h
+      return "extra";
+    }
   </script>
 </head>
 <body class="bg-gray-50 p-6">
   <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow space-y-4">
     <h1 class="text-xl font-semibold text-gray-800">Registrar Ponto</h1>
-    <select id="tipo" class="w-full border p-2 rounded">
-      <option value="entrada">Entrada</option>
-      <option value="saida_almoco">Saída para Almoço</option>
-      <option value="retorno_almoco">Retorno do Almoço</option>
-      <option value="saida">Saída</option>
-      <option value="extra">Ponto Extra</option>
-    </select>
     <video id="video" autoplay playsinline class="rounded w-full"></video>
     <button onclick="baterPonto()" class="bg-blue-500 text-white w-full py-2 rounded">Bater Ponto</button>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -79,7 +84,9 @@
           return alert(`Fora do raio permitido. Distância atual: ${distancia.toFixed(2)} metros.`);
         }
 
-        const tipo = document.getElementById('tipo').value;
+        const horaAtual = new Date();
+        const tipo = classificarBatida(horaAtual);
+
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
@@ -99,13 +106,13 @@
           uid: currentUser.uid,
           nome: nome,
           tipo: tipo,
-          horario: new Date().toISOString(),
+          horario: horaAtual.toISOString(),
           imagem: imageUrl,
           latitude,
           longitude
         });
 
-        alert('Ponto registrado com sucesso!');
+        alert(`Ponto registrado como "${tipo}" com sucesso!`);
 
       }, err => {
         alert("Erro ao obter localização. Verifique as permissões.");
