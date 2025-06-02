@@ -1,4 +1,4 @@
-<!-- admin.html - Listagem de pontos registrados -->
+<!-- admin.html - Painel Administrativo com Banco de Horas -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -62,6 +62,7 @@
         <th>Data/Hora</th>
         <th>Selfie</th>
         <th>Localização</th>
+        <th>Saldo de Horas</th>
       </tr>
     </thead>
     <tbody id="tabelaPontos"></tbody>
@@ -71,6 +72,34 @@
     const firebaseConfig = { /* seus dados do Firebase */ };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+
+    function calcularSaldo(tipo, hora) {
+      const entradaLimite = [7, 9];
+      const saidaAlmocoLimite = [12, 13];
+      const retornoLimite = [13, 15];
+      const saidaFinalLimite = [17, 18];
+
+      const h = hora.getHours();
+      const m = hora.getMinutes();
+      const totalMin = h * 60 + m;
+
+      switch (tipo) {
+        case 'entrada':
+          if (totalMin > 9 * 60 + 10) return -(totalMin - 9 * 60);
+          break;
+        case 'saída para almoço':
+          if (totalMin < 12 * 60 - 10) return -(12 * 60 - totalMin);
+          break;
+        case 'retorno do almoço':
+          if (totalMin > 13 * 60 + 10) return -(totalMin - 13 * 60);
+          break;
+        case 'saída':
+          if (totalMin < 17 * 60 - 10) return -(17 * 60 - totalMin);
+          if (totalMin > 18 * 60 + 10) return +(totalMin - 18 * 60);
+          break;
+      }
+      return 0;
+    }
 
     async function carregarPontos() {
       const filtroFuncionario = document.getElementById('filtroFuncionario').value.toLowerCase();
@@ -83,9 +112,12 @@
         const data = doc.data();
         const nome = data.nomeFuncionario || '—';
         const tipo = data.tipo || '—';
-        const dataHora = new Date(data.timestamp).toLocaleString();
+        const timestamp = new Date(data.timestamp);
+        const dataHora = timestamp.toLocaleString();
         const selfie = `<a href="${data.selfieUrl}" target="_blank">Ver</a>`;
         const local = data.latitude && data.longitude ? `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}` : '—';
+        const saldoMinutos = calcularSaldo(tipo.toLowerCase(), timestamp);
+        const saldoTexto = saldoMinutos === 0 ? 'OK' : `${(saldoMinutos / 60).toFixed(2)}h`;
 
         const passaFiltroNome = !filtroFuncionario || nome.toLowerCase().includes(filtroFuncionario);
         const passaFiltroData = !filtroData || dataHora.startsWith(new Date(filtroData).toLocaleDateString());
@@ -98,6 +130,7 @@
               <td>${dataHora}</td>
               <td>${selfie}</td>
               <td>${local}</td>
+              <td>${saldoTexto}</td>
             </tr>`;
         }
       });
