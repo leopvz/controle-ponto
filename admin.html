@@ -1,139 +1,156 @@
-<!-- admin.html - Painel Administrativo com Banco de Horas -->
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel Administrativo - Ponto</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 1rem;
-      background-color: #f1f5f9;
-    }
-    h1 {
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 2rem;
-      background-color: white;
-    }
-    th, td {
-      border: 1px solid #cbd5e1;
-      padding: 0.75rem;
-      text-align: left;
-    }
-    th {
-      background-color: #00AEEF;
-      color: white;
-    }
-    tr:nth-child(even) {
-      background-color: #f9fafb;
-    }
-    input, select {
-      padding: 0.5rem;
-      margin: 0.5rem;
-    }
-  </style>
+  <title>Painel do Administrador</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="firebase-init.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <h1>Painel Administrativo</h1>
-  <label for="filtroFuncionario">Filtrar por funcionário:</label>
-  <input type="text" id="filtroFuncionario" placeholder="Nome ou ID">
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Painel do Administrador</h1>
 
-  <label for="filtroData">Filtrar por data:</label>
-  <input type="date" id="filtroData">
+    <div class="bg-white p-4 rounded shadow mb-6">
+      <h2 class="text-xl font-semibold mb-2">Listagem de Pontos</h2>
+      <label class="block mb-2">Filtrar por funcionário:</label>
+      <select id="filtroFuncionario" class="border border-gray-300 rounded p-2 mb-4"></select>
 
-  <button onclick="carregarPontos()">Buscar</button>
+      <label class="block mb-2">Filtrar por data:</label>
+      <input type="date" id="filtroData" class="border border-gray-300 rounded p-2 mb-4">
 
-  <table>
-    <thead>
-      <tr>
-        <th>Funcionário</th>
-        <th>Tipo</th>
-        <th>Data/Hora</th>
-        <th>Selfie</th>
-        <th>Localização</th>
-        <th>Saldo de Horas</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaPontos"></tbody>
-  </table>
+      <button onclick="filtrarPontos()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Filtrar</button>
+      <table class="min-w-full bg-white mt-4">
+        <thead>
+          <tr>
+            <th class="py-2 px-4 border-b">Funcionário</th>
+            <th class="py-2 px-4 border-b">Data/Hora</th>
+            <th class="py-2 px-4 border-b">Tipo</th>
+            <th class="py-2 px-4 border-b">Geolocalização</th>
+            <th class="py-2 px-4 border-b">Selfie</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaPontos"></tbody>
+      </table>
+    </div>
+
+    <section class="container mt-8">
+      <h2 class="text-2xl font-semibold mb-4">Resumo Mensal por Funcionário</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="resumoMensalContainer"></div>
+    </section>
+
+  </div>
 
   <script>
-    const firebaseConfig = { /* seus dados do Firebase */ };
-    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    function calcularSaldo(tipo, hora) {
-      const entradaLimite = [7, 9];
-      const saidaAlmocoLimite = [12, 13];
-      const retornoLimite = [13, 15];
-      const saidaFinalLimite = [17, 18];
-
-      const h = hora.getHours();
-      const m = hora.getMinutes();
-      const totalMin = h * 60 + m;
-
-      switch (tipo) {
-        case 'entrada':
-          if (totalMin > 9 * 60 + 10) return -(totalMin - 9 * 60);
-          break;
-        case 'saída para almoço':
-          if (totalMin < 12 * 60 - 10) return -(12 * 60 - totalMin);
-          break;
-        case 'retorno do almoço':
-          if (totalMin > 13 * 60 + 10) return -(totalMin - 13 * 60);
-          break;
-        case 'saída':
-          if (totalMin < 17 * 60 - 10) return -(17 * 60 - totalMin);
-          if (totalMin > 18 * 60 + 10) return +(totalMin - 18 * 60);
-          break;
-      }
-      return 0;
+    async function carregarFuncionarios() {
+      const select = document.getElementById("filtroFuncionario");
+      select.innerHTML = '<option value="">Todos</option>';
+      const snapshot = await db.collection("funcionarios").get();
+      snapshot.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.data().nome;
+        option.textContent = doc.data().nome;
+        select.appendChild(option);
+      });
     }
 
-    async function carregarPontos() {
-      const filtroFuncionario = document.getElementById('filtroFuncionario').value.toLowerCase();
-      const filtroData = document.getElementById('filtroData').value;
-      const tabela = document.getElementById('tabelaPontos');
-      tabela.innerHTML = '';
+    async function filtrarPontos() {
+      const funcionario = document.getElementById("filtroFuncionario").value;
+      const data = document.getElementById("filtroData").value;
+      const tabela = document.getElementById("tabelaPontos");
+      tabela.innerHTML = "";
 
-      const snapshot = await db.collection("registros").orderBy("timestamp", "desc").limit(100).get();
+      let queryRef = db.collection("pontos");
+      if (funcionario) queryRef = queryRef.where("funcionario", "==", funcionario);
+      const snapshot = await queryRef.get();
+
       snapshot.forEach(doc => {
-        const data = doc.data();
-        const nome = data.nomeFuncionario || '—';
-        const tipo = data.tipo || '—';
-        const timestamp = new Date(data.timestamp);
-        const dataHora = timestamp.toLocaleString();
-        const selfie = `<a href="${data.selfieUrl}" target="_blank">Ver</a>`;
-        const local = data.latitude && data.longitude ? `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}` : '—';
-        const saldoMinutos = calcularSaldo(tipo.toLowerCase(), timestamp);
-        const saldoTexto = saldoMinutos === 0 ? 'OK' : `${(saldoMinutos / 60).toFixed(2)}h`;
+        const ponto = doc.data();
+        const dataHora = new Date(ponto.timestamp.seconds * 1000);
+        const dataFormatada = dataHora.toLocaleString();
+        if (data && dataHora.toISOString().split("T")[0] !== data) return;
 
-        const passaFiltroNome = !filtroFuncionario || nome.toLowerCase().includes(filtroFuncionario);
-        const passaFiltroData = !filtroData || dataHora.startsWith(new Date(filtroData).toLocaleDateString());
-
-        if (passaFiltroNome && passaFiltroData) {
-          tabela.innerHTML += `
-            <tr>
-              <td>${nome}</td>
-              <td>${tipo}</td>
-              <td>${dataHora}</td>
-              <td>${selfie}</td>
-              <td>${local}</td>
-              <td>${saldoTexto}</td>
-            </tr>`;
-        }
+        const linha = `<tr>
+          <td class="border px-4 py-2">${ponto.funcionario}</td>
+          <td class="border px-4 py-2">${dataFormatada}</td>
+          <td class="border px-4 py-2">${ponto.tipo}</td>
+          <td class="border px-4 py-2">${ponto.latitude?.toFixed(5)}, ${ponto.longitude?.toFixed(5)}</td>
+          <td class="border px-4 py-2">
+            ${ponto.selfieURL ? `<a href="${ponto.selfieURL}" target="_blank" class="text-blue-600 underline">Ver</a>` : "-"}
+          </td>
+        </tr>`;
+        tabela.innerHTML += linha;
       });
+    }
+
+    async function gerarResumoMensal() {
+      const snapshotFuncionarios = await db.collection("funcionarios").get();
+      const container = document.getElementById("resumoMensalContainer");
+      container.innerHTML = "";
+
+      snapshotFuncionarios.forEach(async (docFuncionario) => {
+        const func = docFuncionario.data();
+        const pontosRef = db.collection("pontos");
+        const justificativasRef = db.collection("justificativas");
+
+        const inicioMes = new Date();
+        inicioMes.setDate(1);
+        inicioMes.setHours(0,0,0,0);
+        const fimMes = new Date();
+        fimMes.setMonth(fimMes.getMonth() + 1);
+        fimMes.setDate(0);
+        fimMes.setHours(23,59,59,999);
+
+        const pontosSnap = await pontosRef.where("funcionario", "==", func.nome).get();
+        const justificativasSnap = await justificativasRef.where("funcionario", "==", func.nome).get();
+
+        let diasTrabalhados = new Set();
+        let pontoExtra = 0;
+        let faltas = 0;
+        let faltasJustificadas = 0;
+        let saldoBanco = 0;
+
+        pontosSnap.forEach(ponto => {
+          const data = ponto.data();
+          const dia = data.timestamp.toDate().toLocaleDateString();
+          const hora = data.timestamp.toDate().getHours();
+          diasTrabalhados.add(dia);
+          if (data.tipo === "extra") pontoExtra++;
+          if (data.saldo) saldoBanco += data.saldo;
+        });
+
+        justificativasSnap.forEach(just => {
+          const data = just.data();
+          const dia = new Date(data.data).toLocaleDateString();
+          if (!diasTrabalhados.has(dia)) {
+            if (data.status === "aprovado") faltasJustificadas++;
+            else faltas++;
+          }
+        });
+
+        const card = `
+          <div class="bg-white shadow p-4 rounded-xl">
+            <h3 class="font-bold text-lg mb-2">${func.nome}</h3>
+            <p>Dias trabalhados: ${diasTrabalhados.size}</p>
+            <p>Pontos extras: ${pontoExtra}</p>
+            <p>Faltas justificadas: ${faltasJustificadas}</p>
+            <p>Faltas injustificadas: ${faltas}</p>
+            <p class="font-semibold">Banco de horas: ${saldoBanco.toFixed(2)}h</p>
+            <a href="justificativas.html?funcionario=${func.nome}" class="text-blue-600 underline text-sm">Ver justificativas</a>
+          </div>
+        `;
+        container.innerHTML += card;
+      });
+    }
+
+    window.onload = () => {
+      carregarFuncionarios();
+      gerarResumoMensal();
     }
   </script>
 </body>
