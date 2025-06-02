@@ -27,6 +27,21 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
     const storage = firebase.storage();
+
+    const sedeLatitude = -23.477944;
+    const sedeLongitude = -46.650889;
+
+    function calcularDistanciaEmMetros(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const rad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * rad;
+      const dLon = (lon2 - lon1) * rad;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
   </script>
 </head>
 <body class="bg-gray-50 p-6">
@@ -54,31 +69,47 @@
     });
 
     async function baterPonto() {
-      const tipo = document.getElementById('tipo').value;
-      const video = document.getElementById('video');
-      const canvas = document.getElementById('canvas');
-      const context = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0);
+      if (!navigator.geolocation) return alert("Geolocalização não suportada neste dispositivo.");
 
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-      const storageRef = storage.ref().child(`selfies/${currentUser.uid}/${Date.now()}.jpg`);
-      const snapshot = await storageRef.put(blob);
-      const imageUrl = await snapshot.ref.getDownloadURL();
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const { latitude, longitude } = pos.coords;
+        const distancia = calcularDistanciaEmMetros(latitude, longitude, sedeLatitude, sedeLongitude);
 
-      const doc = await db.collection('funcionarios').doc(currentUser.uid).get();
-      const nome = doc.exists ? doc.data().nome : 'Funcionário';
+        if (distancia > 30) {
+          return alert(`Fora do raio permitido. Distância atual: ${distancia.toFixed(2)} metros.`);
+        }
 
-      await db.collection('pontos').add({
-        uid: currentUser.uid,
-        nome: nome,
-        tipo: tipo,
-        horario: new Date().toISOString(),
-        imagem: imageUrl
+        const tipo = document.getElementById('tipo').value;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+        const storageRef = storage.ref().child(`selfies/${currentUser.uid}/${Date.now()}.jpg`);
+        const snapshot = await storageRef.put(blob);
+        const imageUrl = await snapshot.ref.getDownloadURL();
+
+        const doc = await db.collection('funcionarios').doc(currentUser.uid).get();
+        const nome = doc.exists ? doc.data().nome : 'Funcionário';
+
+        await db.collection('pontos').add({
+          uid: currentUser.uid,
+          nome: nome,
+          tipo: tipo,
+          horario: new Date().toISOString(),
+          imagem: imageUrl,
+          latitude,
+          longitude
+        });
+
+        alert('Ponto registrado com sucesso!');
+
+      }, err => {
+        alert("Erro ao obter localização. Verifique as permissões.");
       });
-
-      alert('Ponto registrado com sucesso!');
     }
 
     async function initCamera() {
