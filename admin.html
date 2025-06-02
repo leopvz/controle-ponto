@@ -1,93 +1,106 @@
+<!-- admin.html - Listagem de pontos registrados -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin | Painel de Pontos</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Administrativo - Ponto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
   <style>
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #f1f5f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 2rem;
+      background-color: white;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    th {
+      background-color: #00AEEF;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    input, select {
+      padding: 0.5rem;
+      margin: 0.5rem;
     }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
-      authDomain: "controle-de-ponto-papelprint.firebaseapp.com",
-      projectId: "controle-de-ponto-papelprint",
-      storageBucket: "controle-de-ponto-papelprint.appspot.com",
-      messagingSenderId: "630875968731",
-      appId: "1:630875968731:web:2dc067757a090bc16c28fe"
-    };
-
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-  </script>
 </head>
-<body class="bg-gray-50 p-6">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-semibold text-gray-800">Painel Administrativo</h1>
-    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Sair</button>
-  </div>
+<body>
+  <h1>Painel Administrativo</h1>
+  <label for="filtroFuncionario">Filtrar por funcionário:</label>
+  <input type="text" id="filtroFuncionario" placeholder="Nome ou ID">
 
-  <div class="bg-white p-6 rounded-xl shadow">
-    <h2 class="text-lg font-semibold mb-4">Registros de Ponto</h2>
-    <table class="w-full table-auto text-sm text-left">
-      <thead>
-        <tr class="bg-gray-100 text-gray-700">
-          <th class="px-4 py-2">Funcionário</th>
-          <th class="px-4 py-2">Tipo</th>
-          <th class="px-4 py-2">Data</th>
-          <th class="px-4 py-2">Horário</th>
-          <th class="px-4 py-2">Imagem</th>
-        </tr>
-      </thead>
-      <tbody id="tabela-pontos" class="text-gray-700"></tbody>
-    </table>
-  </div>
+  <label for="filtroData">Filtrar por data:</label>
+  <input type="date" id="filtroData">
+
+  <button onclick="carregarPontos()">Buscar</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Funcionário</th>
+        <th>Tipo</th>
+        <th>Data/Hora</th>
+        <th>Selfie</th>
+        <th>Localização</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaPontos"></tbody>
+  </table>
 
   <script>
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        window.location.href = 'login.html';
-      } else {
-        carregarPontos();
-      }
-    });
+    const firebaseConfig = { /* seus dados do Firebase */ };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
     async function carregarPontos() {
-      const tabela = document.getElementById('tabela-pontos');
+      const filtroFuncionario = document.getElementById('filtroFuncionario').value.toLowerCase();
+      const filtroData = document.getElementById('filtroData').value;
+      const tabela = document.getElementById('tabelaPontos');
       tabela.innerHTML = '';
 
-      const snapshot = await db.collection('pontos').orderBy('horario', 'desc').limit(100).get();
+      const snapshot = await db.collection("registros").orderBy("timestamp", "desc").limit(100).get();
       snapshot.forEach(doc => {
-        const ponto = doc.data();
-        const dataHora = new Date(ponto.horario);
-        const data = dataHora.toLocaleDateString('pt-BR');
-        const hora = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const data = doc.data();
+        const nome = data.nomeFuncionario || '—';
+        const tipo = data.tipo || '—';
+        const dataHora = new Date(data.timestamp).toLocaleString();
+        const selfie = `<a href="${data.selfieUrl}" target="_blank">Ver</a>`;
+        const local = data.latitude && data.longitude ? `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}` : '—';
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="px-4 py-2">${ponto.nome}</td>
-          <td class="px-4 py-2">${ponto.tipo}</td>
-          <td class="px-4 py-2">${data}</td>
-          <td class="px-4 py-2">${hora}</td>
-          <td class="px-4 py-2">
-            <a href="${ponto.imagem}" target="_blank" class="text-blue-500 hover:underline">Ver</a>
-          </td>
-        `;
-        tabela.appendChild(tr);
+        const passaFiltroNome = !filtroFuncionario || nome.toLowerCase().includes(filtroFuncionario);
+        const passaFiltroData = !filtroData || dataHora.startsWith(new Date(filtroData).toLocaleDateString());
+
+        if (passaFiltroNome && passaFiltroData) {
+          tabela.innerHTML += `
+            <tr>
+              <td>${nome}</td>
+              <td>${tipo}</td>
+              <td>${dataHora}</td>
+              <td>${selfie}</td>
+              <td>${local}</td>
+            </tr>`;
+        }
       });
-    }
-
-    function logout() {
-      auth.signOut();
-      window.location.href = 'login.html';
     }
   </script>
 </body>
