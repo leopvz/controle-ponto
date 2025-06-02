@@ -3,153 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestão de Justificativas</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      margin: 0;
-      padding: 1rem;
-      background-color: #f8fafc;
-    }
-    .container {
-      max-width: 960px;
-      margin: auto;
-      background: #fff;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-    h1 {
-      color: #1e293b;
-      font-size: 1.75rem;
-      margin-bottom: 1.5rem;
-    }
-    label {
-      font-weight: 600;
-      display: block;
-      margin-top: 1rem;
-    }
-    select, input[type="date"] {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.25rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-    }
-    table {
-      width: 100%;
-      margin-top: 2rem;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    th {
-      background-color: #f1f5f9;
-    }
-    .actions button {
-      margin-right: 0.5rem;
-      padding: 0.4rem 0.8rem;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .approve { background-color: #10b981; color: white; }
-    .reject { background-color: #ef4444; color: white; }
-  </style>
+  <title>Responder Justificativas</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-  <div class="container">
-    <h1>Justificativas de Falta</h1>
-
-    <label for="funcionarioSelect">Funcionário</label>
-    <select id="funcionarioSelect">
-      <option value="">Todos</option>
-    </select>
-
-    <label for="dataInicio">Data Início</label>
-    <input type="date" id="dataInicio">
-
-    <label for="dataFim">Data Fim</label>
-    <input type="date" id="dataFim">
-
-    <button onclick="filtrarJustificativas()">Filtrar</button>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Funcionário</th>
-          <th>Motivo</th>
-          <th>Anexo</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaJustificativas"></tbody>
-    </table>
+<body class="bg-gray-100 font-sans">
+  <div class="max-w-4xl mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4 text-center">📋 Responder Justificativas</h1>
+    <div id="justificativas-container" class="space-y-4"></div>
   </div>
 
   <script>
-    const firebaseConfig = {/* COLE AQUI SUA CONFIGURAÇÃO */};
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-    async function carregarFuncionarios() {
-      const select = document.getElementById('funcionarioSelect');
-      const snapshot = await db.collection("usuarios").get();
-      snapshot.forEach(doc => {
-        const opt = document.createElement("option");
-        opt.value = doc.id;
-        opt.textContent = doc.data().nome;
-        select.appendChild(opt);
-      });
-    }
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_AUTH_DOMAIN",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_STORAGE_BUCKET",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
 
-    async function filtrarJustificativas() {
-      const func = document.getElementById("funcionarioSelect").value;
-      const inicio = new Date(document.getElementById("dataInicio").value);
-      const fim = new Date(document.getElementById("dataFim").value);
-      fim.setDate(fim.getDate() + 1);
-      const tabela = document.getElementById("tabelaJustificativas");
-      tabela.innerHTML = "";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-      let ref = db.collection("justificativas");
-      if (func) ref = ref.where("funcionario", "==", func);
-      const snapshot = await ref.get();
+    async function carregarJustificativas() {
+      const querySnapshot = await getDocs(collection(db, "justificativas"));
+      const container = document.getElementById("justificativas-container");
 
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        const data = new Date(d.data);
-        if (data >= inicio && data < fim) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${data.toLocaleDateString()}</td>
-            <td>${d.nome}</td>
-            <td>${d.motivo}</td>
-            <td><a href="${d.anexo}" target="_blank">Abrir</a></td>
-            <td>${d.status}</td>
-            <td class="actions">
-              <button class="approve" onclick="atualizarStatus('${doc.id}', 'Aprovado')">Aprovar</button>
-              <button class="reject" onclick="atualizarStatus('${doc.id}', 'Rejeitado')">Rejeitar</button>
-            </td>
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === "pendente") {
+          const card = document.createElement("div");
+          card.className = "bg-white rounded shadow p-4";
+          card.innerHTML = `
+            <p><strong>Funcionário:</strong> ${data.nome}</p>
+            <p><strong>Motivo:</strong> ${data.motivo}</p>
+            <p><strong>Data:</strong> ${data.data}</p>
+            <p><strong>Arquivo:</strong> <a href="${data.arquivoURL}" target="_blank" class="text-blue-600 underline">Ver Atestado</a></p>
+            <div class="mt-2 space-x-2">
+              <button onclick="responder('${docSnap.id}', 'aprovada')" class="bg-green-500 text-white px-4 py-1 rounded">Aprovar</button>
+              <button onclick="responder('${docSnap.id}', 'recusada')" class="bg-red-500 text-white px-4 py-1 rounded">Recusar</button>
+            </div>
           `;
-          tabela.appendChild(tr);
+          container.appendChild(card);
         }
       });
     }
 
-    async function atualizarStatus(id, status) {
-      await db.collection("justificativas").doc(id).update({ status });
-      filtrarJustificativas();
+    async function responder(id, status) {
+      await updateDoc(doc(db, "justificativas", id), {
+        status: status
+      });
+      alert(`Justificativa ${status}`);
+      location.reload();
     }
 
-    window.onload = carregarFuncionarios;
+    window.onload = carregarJustificativas;
   </script>
 </body>
 </html>
