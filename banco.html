@@ -85,14 +85,113 @@
   </div>
 
   <script>
-    // Firebase config a ser preenchido com seu SDK Web...
-    const firebaseConfig = { /* ... */ };
+    const firebaseConfig = { /* sua config aqui */ };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    const funcionarioSelect = document.getElementById("funcionario");
+    const tabelaBanco = document.getElementById("tabelaBanco");
+    const saldoTotal = document.getElementById("saldoTotal");
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) carregarFuncionarios();
+    });
+
+    async function carregarFuncionarios() {
+      const snapshot = await db.collection("funcionarios").get();
+      funcionarioSelect.innerHTML = "";
+      snapshot.forEach(doc => {
+        const opt = document.createElement("option");
+        opt.value = doc.id;
+        opt.textContent = doc.data().nome;
+        funcionarioSelect.appendChild(opt);
+      });
+    }
+
     async function filtrarBanco() {
-      // Função a ser implementada no próximo passo...
-      alert("Função de filtragem em desenvolvimento");
+      const funcionarioId = funcionarioSelect.value;
+      const inicio = new Date(document.getElementById("dataInicio").value);
+      const fim = new Date(document.getElementById("dataFim").value);
+      fim.setHours(23,59,59,999);
+
+      const snapshot = await db.collection("pontos")
+        .where("funcionarioId", "==", funcionarioId)
+        .where("timestamp", ">=", inicio)
+        .where("timestamp", "<=", fim)
+        .orderBy("timestamp")
+        .get();
+
+      const dias = {};
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const dia = data.timestamp.toDate().toISOString().split("T")[0];
+        if (!dias[dia]) dias[dia] = [];
+        dias[dia].push(data);
+      });
+
+      tabelaBanco.innerHTML = "";
+      let saldoAcumulado = 0;
+
+      for (const dia in dias) {
+        const eventos = dias[dia];
+        const registros = {};
+        eventos.forEach(e => registros[e.tipo] = e.hora);
+
+        const saldoMin = calcularSaldo(registros);
+        saldoAcumulado += saldoMin;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${dia}</td>
+          <td>${registros.entrada || "-"}</td>
+          <td>${registros.almoco_saida || "-"}</td>
+          <td>${registros.almoco_retorno || "-"}</td>
+          <td>${registros.saida || "-"}</td>
+          <td class="${saldoMin >= 0 ? 'saldo-positivo' : 'saldo-negativo'}">${formatarSaldo(saldoMin)}</td>
+        `;
+        tabelaBanco.appendChild(tr);
+      }
+
+      saldoTotal.textContent = `Saldo total no período: ${formatarSaldo(saldoAcumulado)}`;
+      saldoTotal.className = saldoAcumulado >= 0 ? "saldo-positivo" : "saldo-negativo";
+    }
+
+    function calcularSaldo(reg) {
+      function minutos(hora) {
+        if (!hora) return null;
+        const [h,m] = hora.split(":").map(Number);
+        return h * 60 + m;
+      }
+      const ent = minutos(reg.entrada);
+      const alm_sai = minutos(reg.almoco_saida);
+      const alm_ret = minutos(reg.almoco_retorno);
+      const sai = minutos(reg.saida);
+
+      if ([ent, alm_sai, alm_ret, sai].some(v => v === null)) return 0;
+
+      const esperadoEnt = 8 * 60;
+      const esperadoSai = 17 * 60;
+      const intervaloMin = 60;
+
+      let saldo = 0;
+
+      if (ent > esperadoEnt + 10) saldo -= ent - esperadoEnt;
+      if (sai < esperadoSai - 10) saldo -= esperadoSai - sai;
+
+      const totalTrabalhado = (alm_sai - ent) + (sai - alm_ret);
+      const esperado = (esperadoSai - esperadoEnt) - intervaloMin;
+
+      saldo += totalTrabalhado - esperado;
+      return saldo;
+    }
+
+    function formatarSaldo(min) {
+      const sinal = min >= 0 ? "+" : "-";
+      const abs = Math.abs(min);
+      const h = Math.floor(abs / 60);
+      const m = abs % 60;
+      return `${sinal}${h}h${m.toString().padStart(2,'0')}`;
     }
   </script>
 </body>
