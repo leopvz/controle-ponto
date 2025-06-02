@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Papelprint | Registro de Ponto</title>
+  <title>Registro de Ponto</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-    }
+    body { font-family: 'Inter', sans-serif; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCzy5KwdkK0GCzZ5o6i1lOK7WsdheSYV9g",
@@ -28,132 +26,65 @@
     const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
   </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
-  <div class="absolute top-4 right-4">
-    <button onclick="logout()" class="text-sm text-gray-600 hover:text-red-600">
-      <i class="fas fa-sign-out-alt mr-1"></i>Sair
-    </button>
-  </div>
-
-  <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
-    <h1 class="text-2xl font-semibold text-gray-800 text-center mb-4">Registro de Ponto</h1>
-
-    <div class="mb-4 text-center">
-      <p id="bemVindo" class="text-gray-600">Bem-vindo(a)</p>
-      <p class="text-sm text-gray-500">Certifique-se de estar na sede e prepare-se para a selfie</p>
-    </div>
-
-    <div class="mb-4">
-      <video id="video" class="w-full rounded-lg" autoplay muted playsinline></video>
-      <canvas id="canvas" class="hidden"></canvas>
-    </div>
-
-    <button id="captureSelfie" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl text-lg font-semibold">
-      Capturar Selfie & Registrar Ponto
-    </button>
-
-    <p id="statusMessage" class="mt-4 text-center text-sm text-gray-600"></p>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow space-y-4">
+    <h1 class="text-xl font-semibold text-gray-800">Registrar Ponto</h1>
+    <select id="tipo" class="w-full border p-2 rounded">
+      <option value="entrada">Entrada</option>
+      <option value="saida_almoco">Saída para Almoço</option>
+      <option value="retorno_almoco">Retorno do Almoço</option>
+      <option value="saida">Saída</option>
+      <option value="extra">Ponto Extra</option>
+    </select>
+    <video id="video" autoplay playsinline class="rounded w-full"></video>
+    <button onclick="baterPonto()" class="bg-blue-500 text-white w-full py-2 rounded">Bater Ponto</button>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <button onclick="logout()" class="text-sm text-red-500 mt-2">Sair</button>
   </div>
 
   <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('captureSelfie');
-    const statusMessage = document.getElementById('statusMessage');
-    const bemVindo = document.getElementById('bemVindo');
-
-    const sedeLat = -23.477944;
-    const sedeLng = -46.650889;
-    const raioPermitido = 30;
+    let currentUser = null;
 
     auth.onAuthStateChanged(async user => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
-
-      const uid = user.uid;
-      const docRef = db.collection('funcionarios').doc(uid);
-      const doc = await docRef.get();
-
-      if (!doc.exists) {
-        alert('Usuário sem dados vinculados.');
-        auth.signOut();
-        return;
-      }
-
-      const dados = doc.data();
-      bemVindo.textContent = `Bem-vindo(a), ${dados.nome}`;
-
-      captureBtn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-          statusMessage.textContent = 'Geolocalização não suportada.';
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(position => {
-          const userLat = position.coords.latitude;
-          const userLng = position.coords.longitude;
-          const distancia = calcularDistancia(userLat, userLng, sedeLat, sedeLng);
-
-          if (distancia > raioPermitido) {
-            statusMessage.textContent = `Fora da área (${Math.round(distancia)}m).`;
-            return;
-          }
-
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imagemData = canvas.toDataURL('image/png');
-
-          const agora = new Date();
-          const hora = agora.getHours();
-          const minuto = agora.getMinutes();
-          const totalMin = hora * 60 + minuto;
-          let tipo = 'Ponto Extra';
-
-          if (totalMin >= 420 && totalMin <= 540) tipo = 'Entrada';
-          else if (totalMin >= 720 && totalMin <= 780) tipo = 'Saída para Almoço';
-          else if (totalMin >= 781 && totalMin <= 900) tipo = 'Retorno do Almoço';
-          else if (totalMin >= 1020 && totalMin <= 1080) tipo = 'Saída';
-
-          statusMessage.innerHTML = `<span class="text-green-600 font-medium">${tipo}</span> registrado com sucesso às ${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}.`;
-
-          db.collection('pontos').add({
-            uid,
-            nome: dados.nome,
-            tipo,
-            horario: agora.toISOString(),
-            lat: userLat,
-            lng: userLng,
-            imagem: imagemData
-          });
-        }, err => {
-          statusMessage.textContent = 'Erro ao obter localização: ' + err.message;
-        });
-      });
+      if (!user) return window.location.href = 'login.html';
+      currentUser = user;
     });
 
-    function calcularDistancia(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const rad = Math.PI / 180;
-      const dLat = (lat2 - lat1) * rad;
-      const dLon = (lon2 - lon1) * rad;
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+    async function baterPonto() {
+      const tipo = document.getElementById('tipo').value;
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+      const storageRef = storage.ref().child(`selfies/${currentUser.uid}/${Date.now()}.jpg`);
+      const snapshot = await storageRef.put(blob);
+      const imageUrl = await snapshot.ref.getDownloadURL();
+
+      const doc = await db.collection('funcionarios').doc(currentUser.uid).get();
+      const nome = doc.exists ? doc.data().nome : 'Funcionário';
+
+      await db.collection('pontos').add({
+        uid: currentUser.uid,
+        nome: nome,
+        tipo: tipo,
+        horario: new Date().toISOString(),
+        imagem: imageUrl
+      });
+
+      alert('Ponto registrado com sucesso!');
     }
 
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (err) {
-        statusMessage.textContent = 'Erro ao acessar a câmera: ' + err.message;
-      }
+    async function initCamera() {
+      const video = document.getElementById('video');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
     }
 
     function logout() {
@@ -161,7 +92,7 @@
       window.location.href = 'login.html';
     }
 
-    startCamera();
+    initCamera();
   </script>
 </body>
 </html>
