@@ -36,6 +36,11 @@
     <input type="date" id="dataFim">
 
     <button onclick="filtrarBanco()">Filtrar</button>
+    
+    <button onclick="exportTableToCSV('tabelaBanco', 'pontos.csv')" class="btn-exportar">
+    Exportar para CSV
+    </button>
+
 
     <table>
       <thead>
@@ -132,5 +137,6 @@
 
     window.onload = carregarFuncionarios;
   </script>
+  <script src="exportCSV.js"></script>
 </body>
 </html>
