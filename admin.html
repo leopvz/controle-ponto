@@ -24,6 +24,10 @@
       <input type="date" id="filtroData" class="border border-gray-300 rounded p-2 mb-4">
 
       <button onclick="filtrarPontos()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Filtrar</button>
+      <button onclick="exportTableToCSV('tabelaPontos', 'pontos.csv')" class="btn-exportar">
+      Exportar para CSV
+      </button>
+
       <table class="min-w-full bg-white mt-4">
         <thead>
           <tr>
@@ -154,5 +158,6 @@
       gerarResumoMensal();
     }
   </script>
+  <script src="exportCSV.js"></script>
 </body>
 </html>
