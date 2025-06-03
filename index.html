@@ -7,8 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Poppins', sans-serif; }
-    video, canvas { display: block; margin: auto; }
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-compat.js"></script>
   <script>
@@ -24,41 +25,37 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const storage = firebase.storage();
   </script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
   <div class="w-full max-w-xl bg-white p-6 rounded-2xl shadow-xl">
     <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">Registro de Ponto</h1>
+    <div class="space-y-4">
+      <div class="text-center">
+        <p><strong>Usuário:</strong> <span id="nomeUsuario"></span></p>
+        <p><strong>Setor:</strong> <span id="setorUsuario"></span></p>
+        <p><strong>Horário:</strong> <span id="horaAtual"></span></p>
+      </div>
 
-    <div class="text-center mb-4">
-      <p><strong>Usuário:</strong> <span id="nomeUsuario"></span></p>
-      <p><strong>Setor:</strong> <span id="setorUsuario"></span></p>
-      <p><strong>Horário:</strong> <span id="horaAtual"></span></p>
-    </div>
+      <div class="flex justify-center">
+        <button onclick="capturarERegistrar()" class="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-cyan-600">
+          Bater Ponto
+        </button>
+      </div>
 
-    <div class="mb-4">
-      <video id="camera" width="320" height="240" autoplay></video>
-      <canvas id="selfieCanvas" width="320" height="240" class="hidden"></canvas>
-    </div>
+      <div class="text-center mt-4">
+        <p id="mensagem" class="text-sm font-medium"></p>
+      </div>
 
-    <div class="flex justify-center gap-4 mb-4">
-      <button onclick="capturarSelfie()" class="bg-yellow-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-yellow-600">
-        Capturar Selfie
-      </button>
-      <button id="botaoPonto" onclick="baterPonto()" disabled class="bg-cyan-500 text-white px-4 py-2 rounded-lg font-semibold opacity-50 cursor-not-allowed">
-        Bater Ponto
-      </button>
-    </div>
-
-    <div class="text-center">
-      <p id="mensagem" class="text-sm font-medium"></p>
+      <div class="hidden">
+        <video id="video" autoplay></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+      </div>
     </div>
   </div>
 
   <script>
     let user = null;
-    let selfieBlob = null;
 
     auth.onAuthStateChanged(async (u) => {
       if (!u) {
@@ -80,31 +77,6 @@
     setInterval(atualizarHora, 1000);
     atualizarHora();
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        const video = document.getElementById('camera');
-        video.srcObject = stream;
-      })
-      .catch(error => {
-        alert("Erro ao acessar a câmera: " + error.message);
-      });
-
-    function capturarSelfie() {
-      const video = document.getElementById('camera');
-      const canvas = document.getElementById('selfieCanvas');
-      const context = canvas.getContext('2d');
-
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.classList.remove("hidden");
-
-      canvas.toBlob(blob => {
-        selfieBlob = blob;
-        const botao = document.getElementById("botaoPonto");
-        botao.disabled = false;
-        botao.classList.remove("opacity-50", "cursor-not-allowed");
-      }, 'image/jpeg');
-    }
-
     function calcularDistanciaEmMetros(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
       const rad = Math.PI / 180;
@@ -125,36 +97,50 @@
       return "extra";
     }
 
-    function baterPonto() {
-      if (!selfieBlob) {
-        alert("Você precisa capturar uma selfie antes de bater o ponto.");
-        return;
+    async function capturarERegistrar() {
+      try {
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+
+        const imagemDataUrl = canvas.toDataURL("image/jpeg");
+        stream.getTracks().forEach(track => track.stop());
+
+        obterLocalizacao(imagemDataUrl);
+      } catch (error) {
+        alert("Erro ao acessar a câmera: " + error.message);
       }
-    
+    }
+
+    function obterLocalizacao(imagemDataUrl) {
       if (!navigator.geolocation) {
         alert("Geolocalização não suportada.");
         return;
       }
-    
+
       navigator.geolocation.getCurrentPosition(
-        (position) => registrarPonto(position),
-        (error) => alert("Erro ao obter localização: " + error.message)
+        position => registrarPonto(position, imagemDataUrl),
+        error => alert("Erro ao obter localização: " + error.message)
       );
     }
-    
-    async function registrarPonto(position) {
+
+    async function registrarPonto(position, imagemDataUrl) {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
       const data = new Date().toLocaleDateString('pt-BR');
       const classificacao = classificarBatida(hora);
+
       const distancia = calcularDistanciaEmMetros(latitude, longitude, -23.597776, -46.64343);
       const localizacaoOk = distancia <= 200;
-    
-      const selfieRef = storage.ref().child(`selfies/${user.uid}_${Date.now()}.jpg`);
-      await selfieRef.put(selfieBlob);
-      const selfieURL = await selfieRef.getDownloadURL();
-    
+
       const registro = {
         uid: user.uid,
         nome: document.getElementById("nomeUsuario").textContent,
@@ -165,17 +151,12 @@
         latitude,
         longitude,
         localizacaoOk,
-        selfieURL
+        selfie: imagemDataUrl
       };
-    
+
       await db.collection("registros").add(registro);
-    
       document.getElementById("mensagem").textContent = `Ponto registrado como "${classificacao.toUpperCase()}" às ${hora}`;
       document.getElementById("mensagem").className = "text-green-600 font-semibold";
-    }
-
-        alert("Erro ao obter localização: " + error.message);
-      });
     }
   </script>
 </body>
