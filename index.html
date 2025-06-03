@@ -125,48 +125,55 @@
       return "extra";
     }
 
-    async function baterPonto() {
+    function baterPonto() {
       if (!selfieBlob) {
         alert("Você precisa capturar uma selfie antes de bater o ponto.");
         return;
       }
-
+    
       if (!navigator.geolocation) {
         alert("Geolocalização não suportada.");
         return;
       }
+    
+      navigator.geolocation.getCurrentPosition(
+        (position) => registrarPonto(position),
+        (error) => alert("Erro ao obter localização: " + error.message)
+      );
+    }
+    
+    async function registrarPonto(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+      const data = new Date().toLocaleDateString('pt-BR');
+      const classificacao = classificarBatida(hora);
+      const distancia = calcularDistanciaEmMetros(latitude, longitude, -23.597776, -46.64343);
+      const localizacaoOk = distancia <= 200;
+    
+      const selfieRef = storage.ref().child(`selfies/${user.uid}_${Date.now()}.jpg`);
+      await selfieRef.put(selfieBlob);
+      const selfieURL = await selfieRef.getDownloadURL();
+    
+      const registro = {
+        uid: user.uid,
+        nome: document.getElementById("nomeUsuario").textContent,
+        setor: document.getElementById("setorUsuario").textContent,
+        horario: hora,
+        data,
+        classificacao,
+        latitude,
+        longitude,
+        localizacaoOk,
+        selfieURL
+      };
+    
+      await db.collection("registros").add(registro);
+    
+      document.getElementById("mensagem").textContent = `Ponto registrado como "${classificacao.toUpperCase()}" às ${hora}`;
+      document.getElementById("mensagem").className = "text-green-600 font-semibold";
+    }
 
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
-        const data = new Date().toLocaleDateString('pt-BR');
-        const classificacao = classificarBatida(hora);
-        const distancia = calcularDistanciaEmMetros(latitude, longitude, -23.597776, -46.64343);
-        const localizacaoOk = distancia <= 200;
-
-        const selfieRef = storage.ref().child(`selfies/${user.uid}_${Date.now()}.jpg`);
-        await selfieRef.put(selfieBlob);
-        const selfieURL = await selfieRef.getDownloadURL();
-
-        const registro = {
-          uid: user.uid,
-          nome: document.getElementById("nomeUsuario").textContent,
-          setor: document.getElementById("setorUsuario").textContent,
-          horario: hora,
-          data,
-          classificacao,
-          latitude,
-          longitude,
-          localizacaoOk,
-          selfieURL
-        };
-
-        await db.collection("registros").add(registro);
-
-        document.getElementById("mensagem").textContent = `Ponto registrado como "${classificacao.toUpperCase()}" às ${hora}`;
-        document.getElementById("mensagem").className = "text-green-600 font-semibold";
-      }, (error) => {
         alert("Erro ao obter localização: " + error.message);
       });
     }
