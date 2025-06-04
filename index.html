@@ -107,7 +107,7 @@
     }
 
     function classificarBatida(horaAtual) {
-      const [h, m] = horaAtual.split(":" ).map(Number);
+      const [h, m] = horaAtual.split(":").map(Number);
       const totalMin = h * 60 + m;
       if (totalMin >= 300 && totalMin < 480) return "entrada";
       if (totalMin >= 720 && totalMin < 840) return "saida_almoco";
@@ -117,51 +117,62 @@
     }
 
     async function baterPonto() {
-      if (!selfieFile) {
-        alert("Capture uma selfie antes de bater o ponto.");
-        return;
+      try {
+        if (!user) {
+          alert("Usuário não autenticado.");
+          return;
+        }
+
+        if (!selfieFile) {
+          alert("Capture uma selfie antes de bater o ponto.");
+          return;
+        }
+
+        if (!navigator.geolocation) {
+          alert("Geolocalização não suportada.");
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+          const data = new Date().toLocaleDateString('pt-BR');
+          const classificacao = classificarBatida(hora);
+          const distancia = calcularDistanciaEmMetros(latitude, longitude, -23.597776, -46.64343);
+          const localizacaoOk = distancia <= 200;
+
+          const storageRef = storage.ref().child(`selfies/${user.uid}_${Date.now()}.jpg`);
+          await storageRef.put(selfieFile);
+          const selfieURL = await storageRef.getDownloadURL();
+
+          const registro = {
+            uid: user.uid,
+            nome: document.getElementById("nomeUsuario").textContent,
+            setor: document.getElementById("setorUsuario").textContent,
+            horario: hora,
+            data,
+            classificacao,
+            latitude,
+            longitude,
+            localizacaoOk,
+            selfieURL
+          };
+
+          await db.collection("registros").add(registro);
+
+          document.getElementById("mensagem").textContent = `Ponto registrado como "${classificacao.toUpperCase()}" às ${hora}`;
+          document.getElementById("mensagem").className = "text-green-600 font-semibold";
+          document.getElementById("btnBaterPonto").disabled = true;
+          document.getElementById("preview").style.display = "none";
+          selfieFile = null;
+        }, (error) => {
+          alert("Erro ao obter localização: " + error.message);
+        });
+      } catch (error) {
+        console.error("Erro ao bater ponto:", error);
+        alert("Ocorreu um erro ao bater o ponto. Tente novamente.");
       }
-
-      if (!navigator.geolocation) {
-        alert("Geolocalização não suportada.");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const hora = new Date().toLocaleTimeString('pt-BR', { hour12: false });
-        const data = new Date().toLocaleDateString('pt-BR');
-        const classificacao = classificarBatida(hora);
-        const distancia = calcularDistanciaEmMetros(latitude, longitude, -23.597776, -46.64343);
-        const localizacaoOk = distancia <= 200;
-
-        const storageRef = storage.ref().child(`selfies/${user.uid}_${Date.now()}.jpg`);
-        await storageRef.put(selfieFile);
-        const selfieURL = await storageRef.getDownloadURL();
-
-        const registro = {
-          uid: user.uid,
-          nome: document.getElementById("nomeUsuario").textContent,
-          setor: document.getElementById("setorUsuario").textContent,
-          horario: hora,
-          data,
-          classificacao,
-          latitude,
-          longitude,
-          localizacaoOk,
-          selfieURL
-        };
-
-        await db.collection("registros").add(registro);
-
-        document.getElementById("mensagem").textContent = `Ponto registrado como "${classificacao.toUpperCase()}" às ${hora}`;
-        document.getElementById("mensagem").className = "text-green-600 font-semibold";
-        document.getElementById("btnBaterPonto").disabled = true;
-        document.getElementById("preview").style.display = "none";
-      }, (error) => {
-        alert("Erro ao obter localização: " + error.message);
-      });
     }
   </script>
 </body>
